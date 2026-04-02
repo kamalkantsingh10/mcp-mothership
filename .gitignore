@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+dist/
+*.egg-info/
+
+# Runtime output
+logs/
+output/
+
+# IDE / local config
+.vscode/
+.mcp.json
+.claude/settings.local.json

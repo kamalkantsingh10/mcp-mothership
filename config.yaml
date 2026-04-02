@@ -1,0 +1,6 @@
+log_level: INFO
+
+imagen:
+  default_output_dir: ./output
+  default_width: 1024
+  default_height: 1024
