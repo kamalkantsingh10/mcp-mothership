@@ -1,177 +1,343 @@
 ---
-stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-02b-vision', 'step-02c-executive-summary', 'step-01b-continue', 'step-03-success-skipped', 'step-04-journeys', 'step-05-domain-skipped', 'step-06-innovation-skipped', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-polish', 'step-12-complete']
-inputDocuments: ['documents/planning-artifacts/product-brief-engagement-manager.md']
+stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-02b-vision', 'step-02c-executive-summary', 'step-03-success', 'step-04-journeys', 'step-05-domain-skipped', 'step-06-innovation-skipped', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-polish', 'step-12-complete']
+inputDocuments: ['documents/planning-artifacts/product-brief-engagement-manager.md', 'documents/planning-artifacts/mcp-capability-platform-brainstorm.md', 'documents/planning-artifacts/architecture.md', 'documents/planning-artifacts/epics.md']
 workflowType: 'prd'
 documentCounts:
   briefs: 1
   research: 0
-  brainstorming: 0
-  projectDocs: 0
+  brainstorming: 1
+  projectDocs: 2
 classification:
   projectType: developer_tool
   domain: general
-  complexity: low
-  projectContext: greenfield
+  complexity: medium
+  projectContext: brownfield
 ---
 
-# Product Requirements Document - Engagement Manager
+# Product Requirements Document - MCP Mothership
 
 **Author:** Kamal
-**Date:** 2026-03-29
+**Date:** 2026-04-07
 
 ## Executive Summary
 
-Engagement Manager is a composable, open-source toolkit for personal brand content creation. Built as an ecosystem of MCP servers, skills, and AI agents, it provides building blocks for a complete content pipeline — from topic research to post generation to image creation to publishing — accessible from Claude Code.
+MCP Mothership is a centralized MCP server manager for developers who build multiple agentic projects. Instead of duplicating MCP server setup, configuration, and maintenance across every project, Mothership runs all MCP servers from a single location. Any agentic project connects to the Mothership — no per-project MCP infrastructure needed.
 
-The system is a creative amplifier, not an automation platform. The user maintains full authority at every step: the system proposes, the user decides. Every output reflects the creator's voice, image, and perspective. Nothing publishes without approval.
+The system provides a lightweight web dashboard for starting and stopping MCP servers, monitoring their status (uptime, request counts, error counts, last request time), and viewing per-server logs. New MCP capabilities are added by dropping a configuration file — no code changes to the manager itself.
 
-The first deliverable is a Google Imagen MCP server for AI image generation. The ecosystem grows one composable piece at a time: topic research, post generation, LinkedIn post formatting (5-6 content types), and WordPress publishing. LinkedIn publishing is manual copy/paste in v1; platform API integrations come later.
+The existing Imagen MCP server (Vertex AI image generation via Nano Banana Pro) is the first managed capability, migrated from stdio to network transport. The project is built in Python, designed for single-user local operation.
 
 ### What Makes This Special
 
-Engagement Manager lives where the creator already works (IDE/CLI), not in another SaaS dashboard. Each piece — MCP server, skill, agent — works independently and chains together. The architecture enforces least-privilege access: each skill only connects to the MCPs it needs. Built for one person's personal brand first, designed to be forked and adapted by others.
-
-## Success Criteria
-
-### MVP Success (Phase 1: Imagen MCP Server)
-
-- SC1: User can invoke the image generation tool from Claude Code and receive a locally saved image file
-- SC2: Configuration validation catches and reports all missing or invalid settings before any API call is attempted
-- SC3: Zero credential values appear in any log output, error message, or system response
-- SC4: Image generation completes without the system imposing a timeout — the user receives either an image or an actionable error
-- SC5: A developer can add a new MCP server to the project by following the established patterns without modifying existing shared modules
-
-### Full Vision Success (Post-MVP)
-
-- SC6: End-to-end content workflow (research → draft → image → publish-ready) completes within 30 minutes for a standard post
-- SC7: Each new capability (research agent, post generator, LinkedIn formats, WordPress publishing) ships as an independent composable piece
+MCP Mothership is not a gateway, proxy, or capability framework. It is a purpose-built process manager with operational visibility for MCP servers. The core insight: MCP capabilities should be infrastructure you maintain in one place, not code you duplicate across projects. The value is immediate — spin up a new agentic project, point it at the Mothership, and every MCP capability you've ever built is already running.
 
 ## Project Classification
 
-- **Project Type:** Developer Tool (MCP servers + skills ecosystem)
-- **Domain:** General (content/social media)
-- **Complexity:** Low (personal utility, no regulatory concerns)
-- **Project Context:** Greenfield
+- **Project Type:** Developer Tool — infrastructure/platform tooling for MCP server management
+- **Domain:** General — no regulated industry constraints
+- **Complexity:** Medium — involves process management, network transport (SSE/HTTP), web dashboard, and structured logging
+- **Project Context:** Brownfield — evolving an existing codebase with a working Imagen MCP server and shared Python modules (config, errors, logging)
+
+## Success Criteria
+
+### User Success
+
+- New agentic project connects to an existing MCP capability with zero MCP server setup — just point to the Mothership
+- Adding a new MCP capability requires only dropping a config file — no code changes to the manager
+- Dashboard shows at a glance which MCPs are running, which are stopped, and which have crashed
+- Logs for any MCP server are viewable independently without digging through combined output
+
+### Business Success
+
+- Single-user personal infrastructure tool — success means Kamal stops duplicating MCP servers across projects
+- 10+ MCP servers manageable from one place without performance or usability degradation
+- Time from "I want a new MCP capability" to "it's running and accessible" is measured in minutes, not hours
+
+### Technical Success
+
+- MCP servers run as independent processes — one crash does not take down others or the manager
+- Crash events are logged with full error context and clearly surfaced on the dashboard
+- Per-MCP logging is fully isolated — each server writes to its own log stream
+- Network transport (SSE/HTTP) works reliably for multi-project connectivity
+- Dashboard accurately reflects real-time server state (running, stopped, crashed, uptime, request count, error count, last request time)
+
+### Measurable Outcomes
+
+- All existing Imagen MCP functionality works identically after migration from stdio to network transport
+- Dashboard loads and reflects accurate state within seconds
+- Logs are queryable/viewable per MCP server from the UI
+- 10+ MCP server configs can be registered and managed without UI or performance issues
 
 ## User Journeys
 
-### Journey 1: Kamal — The Analysis Post (Primary Success Path)
+### Journey 1: The Operator — Daily Management
 
-Kamal has been thinking about how GitHub Copilot alone doesn't improve end-to-end development output. He's got a strong opinion and 30 minutes before his next meeting.
+**Kamal, morning startup.** Opens the terminal, launches the Mothership. The web dashboard loads in the browser. He sees a list of all registered MCP servers — Imagen, Gmail, Notion, a few others he's added over the past months. All showing "Stopped." He clicks "Start" on the three he needs today: Imagen, Gmail, Notion. Within seconds, each flips to "Running" with uptime counters ticking. He minimizes the dashboard tab and gets to work.
 
-He opens Claude Code and tells Engagement Manager: "Analysis post — my take is that just using Copilot doesn't improve end-to-end dev output." The Analyst agent kicks in — pulls research papers, credible publications, poll data, industry stats. Comes back with a structured brief: supporting evidence, counterarguments, key data points.
+**Mid-afternoon, something breaks.** He's working in his diary agent project when image generation stops responding. He switches to the Mothership dashboard. Imagen is showing "Crashed" in red with a timestamp. He clicks into Imagen's log view — the last entries show a `CredentialError: permission denied` with full stack context. His GCP token expired. He refreshes the token, hits "Start" on Imagen from the dashboard. Green again. Back to work in under a minute.
 
-Kamal scans it — "good, but find something on actual productivity metrics, not just adoption rates." Back-and-forth. Analyst refines. Once the research feels solid, the post generator drafts an analysis post in his voice.
+**End of day.** He glances at the dashboard. Imagen handled 23 requests today, Gmail 47, Notion 12. No errors on Gmail or Notion. He stops all servers and closes the Mothership.
 
-He reads it. "Opening is too soft, make it provocative." Another round. Now it lands. Imagen generates an infographic — key stats visualized. He tweaks the prompt: "emphasize the gap between adoption and output." New graphic. Better.
+**This journey reveals:** Dashboard UI (server list, start/stop controls, status indicators), real-time state updates, crash detection and display, per-MCP log viewing, metrics display (request count, uptime, error count, last request time).
 
-Post is ready. He copies it, drops it into LinkedIn, schedules it. Done. 28 minutes.
+### Journey 2: The MCP Developer — Adding a New Capability
 
-### Journey 2: Kamal — The Iterative Edit Loop (Edge Case / Deeper Collaboration)
+**Kamal decides to add a Playwright MCP.** He creates a new server file under `servers/playwright/`, writes the MCP server code using FastMCP, and drops a config file for Playwright into the config directory. The config specifies the server's entry point, port, and any environment variables it needs.
 
-Sometimes the first research pass misses the mark entirely. Kamal says "this angle is wrong — I'm not arguing Copilot is bad, I'm arguing it's insufficient without process changes." The Analyst pivots. The post gets regenerated with a different framing. The infographic needs a complete redo. Three rounds of back-and-forth before it clicks.
+He opens the Mothership dashboard. Playwright appears in the server list — status "Stopped," picked up automatically from the config file. He hits "Start." The server spins up, status flips to "Running." He checks the Playwright log stream to confirm clean startup — no errors.
 
-This journey highlights that the system must support mid-stream direction changes without losing prior context or starting from scratch.
+He switches to one of his agent projects, and calls `tools/list` against the Mothership. Playwright's tools show up alongside Imagen and the rest. Done — new capability live in minutes.
+
+**This journey reveals:** Convention-based config registration (drop a file, it appears), config format requirements, server discovery/scan on dashboard load, new MCP log stream auto-creation, tool discovery via MCP protocol.
+
+### Journey 3: The Agent Builder — Connecting a Project
+
+**Kamal starts a new agentic project — a research assistant.** In the project's MCP configuration, he adds a single entry pointing to the Mothership's address and port. No MCP server code in this project. No dependencies to install. No credentials to configure here.
+
+The agent starts up and calls `tools/list` on the Mothership. It discovers `generate_image`, `send_email`, `search_notion`, `browse_page` — all the capabilities Kamal has ever registered. He configures the agent to use `search_notion` and `browse_page` for this project.
+
+A week later, he adds Imagen capability to this same agent. No Mothership changes needed — Imagen is already running. He just updates his agent's config to also use `generate_image`. Instant capability expansion.
+
+**This journey reveals:** Single connection endpoint for agents, MCP tool discovery, no per-project MCP infrastructure, capability reuse across projects, agent-side configuration is minimal (just a URL).
+
+### Journey 4: The Agent — Runtime Interaction
+
+**An agent in Kamal's diary project needs to generate an image.** It connects to the Mothership endpoint, calls `tools/list` to discover available tools, finds `generate_image`, and invokes it with a prompt. The Mothership routes the request to the running Imagen MCP server. The image is generated, saved, and the file path is returned to the agent.
+
+The Mothership logs the request — which MCP handled it, when, how long it took. The request counter for Imagen increments. If the Imagen server had been stopped or crashed, the agent would receive a clear error indicating the capability is unavailable.
+
+**This journey reveals:** Request routing to correct MCP server, per-request logging and metrics tracking, clear error responses for unavailable capabilities, MCP protocol compliance (`tools/list`, tool invocation).
 
 ### Journey Requirements Summary
 
-**MVP (Phase 1):**
-- **Image generation** — infographics tied to post content, prompt-refinable
-
-**Post-MVP (Full Vision):**
-- **Idea intake** — conversational, no forms or templates
-- **Deep research** — credible sources only (papers, publications, polls)
-- **Iterative collaboration** — back-and-forth on research, post content, and image generation
-- **Context persistence** — direction changes mid-flow don't reset the session
-- **Post generation** — voice-aware, perspective-first, not generic AI content
-- **Manual publish** — copy-ready output, no platform integration in v1
-- **Speed target** — 30 minutes end-to-end for a standard post (see SC6)
+| Capability | Revealed By |
+|---|---|
+| Dashboard with server list and status | Journey 1, 2 |
+| Start/Stop controls per MCP | Journey 1, 2 |
+| Real-time status (running/stopped/crashed) | Journey 1, 2 |
+| Crash detection and error surfacing | Journey 1 |
+| Per-MCP log viewing in UI | Journey 1, 2 |
+| Metrics display (uptime, requests, errors, last request) | Journey 1 |
+| Convention-based config registration | Journey 2 |
+| Auto-discovery of new config files | Journey 2 |
+| Network transport (SSE/HTTP) endpoint | Journey 3, 4 |
+| MCP tool discovery via `tools/list` | Journey 3, 4 |
+| Request routing to correct MCP server | Journey 4 |
+| Per-request logging and metrics | Journey 4 |
+| Clear error for unavailable MCP | Journey 4 |
 
 ## Developer Tool Specific Requirements
 
 ### Project-Type Overview
 
-Python-based developer tool built as an ecosystem of stdio MCP servers, skills, and AI agents. All components run locally via Claude Code — no web servers, no package distribution, no multi-IDE support in v1.
+MCP Mothership is a Python developer tool that manages MCP server processes and exposes them over network transport. It runs directly from a cloned repository using Poetry — no package distribution. The primary interface is a CLI command to start the manager and a web dashboard for operational control.
 
 ### Technical Architecture Considerations
 
-- **MCP Transport:** stdio (local process communication, no HTTP/SSE)
-- **Language:** Python for all MCP servers
-- **Host Environment:** Claude Code as the sole MCP client
-- **Distribution:** Runs directly from the repository — no pip package, no npm, no Docker
-- **Configuration:** YAML config files for settings, .env for credentials, MCP server declarations in Claude Code config
+**Language & Runtime:**
+- Python >=3.10 (MCP SDK requirement), development target 3.12
+- Poetry for dependency management, consistent with existing codebase
+- No compiled extensions — pure Python
 
-### Language & Runtime Requirements
+**Single Entry Point:**
+- Start the entire system (manager + dashboard) with one command: `python -m mothership` or equivalent Poetry script
+- The manager process handles MCP server lifecycle and serves the web dashboard on a single port
 
-- Python 3.x (specific version TBD during architecture)
-- Dependencies managed via pip/requirements.txt or pyproject.toml
-- Pure Python — no compiled extensions
+**Transport Architecture:**
+- Each managed MCP server runs as an independent subprocess exposed via SSE or Streamable HTTP
+- The manager assigns ports to MCP servers from a configurable range or uses config-specified ports
+- The dashboard runs on its own port (default configurable) served by the manager process
+
+**MCP Server Config Format (YAML):**
+Each MCP server is registered by dropping a YAML config file into a designated directory (e.g., `servers/<name>/mothership.yaml`). Required fields:
+
+```yaml
+name: imagen                          # Display name for dashboard
+description: "Image generation via Vertex AI Nano Banana Pro"
+entry_point: servers.imagen.server     # Python module path
+port: 8101                             # Port to expose this MCP on (or auto-assign)
+env_vars:                              # Environment variables needed (names only, not values)
+  - IMAGEN_GCP_PROJECT
+  - IMAGEN_API_KEY
+```
+
+- `name` — Human-readable identifier shown in dashboard
+- `description` — What this MCP does, shown in dashboard
+- `entry_point` — Python module path to the FastMCP server
+- `port` — Network port for this MCP (optional, auto-assigned if omitted)
+- `env_vars` — List of required environment variable names (values come from `.env`, not this file)
+
+**Tool Discovery:**
+- Agents connect to individual MCP server ports directly via SSE/HTTP
+- Each MCP server natively supports `tools/list` via the MCP protocol — no custom discovery layer needed
+- The dashboard shows which tools each MCP server exposes for operator reference
 
 ### Implementation Considerations
 
-- Each MCP server is a standalone Python process communicating via stdio
-- Skills are Claude Code skill files (markdown-based prompt workflows)
-- Agents orchestrate skills and MCP tools within Claude Code sessions
-- Least-privilege: each skill declares only the MCP tools it needs
-- Documentation lives in `documents/`
+**Process Management:**
+- Manager spawns each MCP server as a child subprocess
+- Monitors subprocess health — detects crashes via process exit codes
+- Maintains in-memory state: PID, status (running/stopped/crashed), start time, metrics
+- Clean shutdown: stops all child processes when manager exits
+
+**Logging Architecture:**
+- Each MCP server logs to a dedicated log file (e.g., `logs/imagen.log`)
+- Manager maintains its own log file (e.g., `logs/mothership.log`)
+- Log files are rotated or size-limited to prevent disk fill
+- Dashboard reads log files for real-time viewing
+
+**Metrics Collection:**
+- Request count, error count, last request time tracked per MCP server
+- Uptime calculated from process start time
+- Metrics stored in-memory by the manager (no persistent metrics store for MVP)
+
+**Migration from Engagement Manager:**
+- Rename project and repository to MCP Mothership
+- Existing `shared/` modules (config, errors, logging) retained and evolved
+- Imagen server migrated from stdio to SSE/HTTP transport
+- Old planning artifacts remain as historical reference
 
 ## Project Scoping & Phased Development
 
 ### MVP Strategy & Philosophy
 
-**MVP Approach:** Ship the smallest composable piece that delivers standalone value and validates the MCP-based architecture.
+**MVP Approach:** Complete operational tool — the MVP delivers the full management experience because the value proposition only works when all pieces connect. A dashboard without process management is useless; process management without logging is blind; logging without a UI is just files on disk.
 
-### MVP Feature Set (Phase 1): Google Imagen MCP Server
+**Resource Requirements:** Solo developer (Kamal), Python full-stack, existing codebase to build on.
 
-- Single stdio MCP server in Python
-- Accepts a text prompt, calls Vertex AI Imagen API
-- Stores generated image locally, returns the file path
-- Prerequisite: GCP account with Vertex AI enabled
+### MVP Feature Set (Phase 1)
 
-### Post-MVP Features
+**Core User Journeys Supported:**
+- Journey 1 (Operator): Full dashboard with start/stop, status, metrics, logs
+- Journey 2 (MCP Developer): Drop config file, see it appear, start it up
+- Journey 3 (Agent Builder): Connect to Mothership endpoint, discover tools
+- Journey 4 (Agent Runtime): Request routing, metrics tracking, error handling
 
-**Phase 2 (TBD):** Content pipeline direction — Analyst agent for deep research, post generator skills, LinkedIn post types. Details to be defined after MVP validation.
+**Must-Have Capabilities:**
+- Process manager that spawns/monitors/stops MCP server subprocesses
+- Convention-based MCP registration via YAML config files
+- SSE/HTTP transport for all managed MCP servers
+- Web dashboard: server list, start/stop controls, real-time status (running/stopped/crashed)
+- Dashboard metrics: uptime, request count, error count, last request time
+- Per-MCP dedicated log files with dashboard log viewer
+- Imagen MCP migrated from stdio to network transport as first managed server
+- Single CLI command to start the entire system
+- MCP protocol compliance including `tools/list` discovery
+- Project renamed to MCP Mothership (repo, pyproject.toml, references)
 
-**Phase 3 (TBD):** Publishing & expansion direction — WordPress publishing, LinkedIn API integration, additional platforms. Details to be defined.
+### Phase 2 — Growth
+
+- Auto-restart on crash (configurable per MCP)
+- Log search and filtering in dashboard
+- Health check endpoints per MCP server
+- MCP dependency management (ordered startup)
+- Dashboard authentication (basic, for when exposed beyond localhost)
+
+### Phase 3 — Expansion
+
+- Remote access via Tailscale/VPN
+- Plugin system for community MCP servers
+- Centralized credential management across all MCPs
+- Capability scoping — per-agent access control to specific MCPs
+- Persistent metrics with historical trends
 
 ### Risk Mitigation Strategy
 
-**Technical Risks:** Vertex AI Imagen API availability and rate limits — mitigated by keeping the server simple with clear error reporting.
-**Resource Risks:** Solo developer — mitigated by composable architecture where each piece is small and independent.
+**Technical Risks:**
+- *Transport migration (stdio to SSE/HTTP):* FastMCP natively supports `transport="sse"`, so the migration is a config change per server, not an architectural rewrite. Test Imagen end-to-end with SSE before building the manager around it.
+- *Process management reliability:* Use Python's `subprocess` module with proper signal handling. Monitor child processes via polling or `asyncio` subprocess APIs. Keep it simple — no custom process supervisors.
+- *Dashboard real-time updates:* Streamlit's auto-refresh or a lightweight framework with polling/WebSocket. Evaluate Streamlit first for speed of development; fall back to FastAPI + simple HTML if Streamlit creates too much overhead or doesn't fit the UX.
+
+**Resource Risks:**
+- Solo developer — scope is intentionally contained to process management + UI + one MCP migration. No auth, no multi-user, no distribution. If time-constrained, the dashboard can start minimal (status + start/stop) and add log viewing and metrics in a fast follow.
 
 ## Functional Requirements
 
-### Image Generation
+### MCP Server Lifecycle Management
 
-- FR1: User can submit a text prompt to generate an image via the Imagen MCP tool
-- FR2: User can specify image dimensions (width/height) when generating an image
-- FR3: User can specify an output style or artistic direction for the generated image
-- FR4: User can specify a custom output location for the generated image
-- FR5: System generates a single image per prompt request
-- FR6: System stores the generated image locally and returns the file path to the user
+- FR1: Operator can start an individual MCP server from the dashboard
+- FR2: Operator can stop a running MCP server from the dashboard
+- FR3: System detects when a managed MCP server process crashes and updates its status
+- FR4: System stops all running MCP servers when the manager process exits
+- FR5: Operator can start the entire Mothership system (manager + dashboard) with a single CLI command
 
-### Configuration
+### MCP Registration & Discovery
 
-- FR7: User can configure MCP server settings via a YAML configuration file
-- FR8: User can configure sensitive credentials (API keys, GCP project) via environment variables (.env)
-- FR9: System validates configuration on startup and reports missing or invalid settings
+- FR6: System discovers MCP server configurations by scanning for YAML config files in the designated directory
+- FR7: Operator can register a new MCP server by dropping a YAML config file without modifying manager code
+- FR8: Config file specifies server name, description, entry point, port, and required environment variable names
+- FR9: System validates MCP config files on discovery and reports errors for malformed configs
+- FR10: Agents can discover available tools on a running MCP server via the MCP protocol `tools/list` method
 
-### Error Reporting
+### Network Transport
 
-- FR10: System reports an actionable error message when the image generation API is unavailable or returns an error — message includes an error category, human-readable description, and suggested resolution; message never includes credential values
-- FR11: System reports an actionable error message when credentials are missing or invalid — message identifies the specific missing or invalid credential by name without revealing its value
-- FR12: System reports an actionable error message when image generation fails (bad prompt, quota exceeded, etc.) — message includes the failure reason from the API and a suggested resolution
+- FR11: Each managed MCP server is exposed via SSE or Streamable HTTP transport on its configured port
+- FR12: Multiple agents from different projects can connect to the same MCP server simultaneously
+- FR13: System assigns ports to MCP servers based on config or auto-assigns from a configurable range
+
+### Dashboard — Server Overview
+
+- FR14: Dashboard displays a list of all registered MCP servers with their current status (running, stopped, crashed)
+- FR15: Dashboard displays per-server metrics: uptime, request count, error count, last request time
+- FR16: Dashboard shows which tools each MCP server exposes
+- FR17: Dashboard updates server status in near real-time without manual page refresh
+
+### Dashboard — Log Viewing
+
+- FR18: Dashboard provides a log viewer for each MCP server showing its dedicated log output
+- FR19: Operator can select which MCP server's logs to view
+- FR20: Log viewer displays recent log entries with timestamps and log levels
+
+### Logging System
+
+- FR21: Each MCP server writes logs to a dedicated log file separate from other servers
+- FR22: Manager writes its own logs to a separate dedicated log file
+- FR23: Crash events are logged with full error context (exit code, stderr output, timestamp)
+- FR24: Log files are size-limited or rotated to prevent unbounded disk usage
+
+### Metrics & Monitoring
+
+- FR25: System tracks request count per MCP server
+- FR26: System tracks error count per MCP server
+- FR27: System tracks last request timestamp per MCP server
+- FR28: System calculates uptime per MCP server from process start time
+
+### Imagen MCP Migration
+
+- FR29: Existing Imagen MCP server operates over SSE/HTTP transport instead of stdio
+- FR30: All existing Imagen functionality (image generation, session-based refinement) works identically after transport migration
+- FR31: Imagen is registered as the first managed MCP server via a config file
+
+### Project Migration
+
+- FR32: Project is renamed from Engagement Manager to MCP Mothership across repository, pyproject.toml, and code references
+- FR33: Existing shared modules (config, errors, logging) are retained and available for MCP servers
 
 ## Non-Functional Requirements
 
+### Reliability
+
+- NFR1: A crash in any managed MCP server must not affect other running MCP servers or the manager process
+- NFR2: Manager must detect child process termination within 5 seconds and update status accordingly
+- NFR3: Manager shutdown must cleanly terminate all child MCP server processes (no orphaned processes)
+- NFR4: Dashboard must remain operational and accessible even when all MCP servers are stopped or crashed
+
 ### Security
 
-- NFR1: Credentials must never appear in version-controlled files — verified by ensuring no API keys, tokens, or secrets exist in any committed file
-- NFR2: Credential files must be excluded from version control — verified by the presence of `.env` in `.gitignore` and absence of credential files in the repository
-- NFR3: Credentials must never appear in system output — verified by confirming no log entries, error messages, or tool responses contain credential values
+- NFR5: API keys and credentials must be stored in `.env` files only, never in MCP config YAML files or source code
+- NFR6: `.env` files must be included in `.gitignore` to prevent accidental commit
+- NFR7: Log output must never contain credential values, API keys, or secrets
+- NFR8: Error messages surfaced to agents or the dashboard must not expose credential values
+
+### Performance
+
+- NFR9: Dashboard must load and display current server states within 3 seconds
+- NFR10: MCP server start/stop actions from the dashboard must initiate within 1 second
+- NFR11: Dashboard status updates must reflect actual server state within 5 seconds of a change
+- NFR12: The manager must support 10+ registered MCP servers without degradation in dashboard responsiveness
 
 ### Integration
 
-- NFR4: The system must use a single image generation backend — verified by confirming all image generation requests route through one API provider
-- NFR5: The system must not impose a timeout on image generation — the user waits for the API response; if the API fails, an actionable error is returned
-- NFR6: API error responses must be surfaced to the user without exposing credentials — verified by confirming error messages contain the API error reason but no credential values
+- NFR13: All managed MCP servers must be fully compliant with the MCP protocol specification (tools/list, tool invocation, error responses)
+- NFR14: SSE/HTTP transport must work with standard MCP clients (Claude Code, Claude Desktop, and other MCP-compatible agents)
+- NFR15: Existing Imagen MCP functionality must pass identical test coverage after transport migration from stdio to SSE/HTTP

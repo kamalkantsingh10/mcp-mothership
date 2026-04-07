@@ -43,6 +43,7 @@ class ImagenConfig(BaseServerConfig):
         extra="ignore",
     )
 
+    port: int = 8101
     imagen_api_key: str | None = None
     imagen_gcp_project: str | None = None
     imagen_gcp_region: str = "us-central1"

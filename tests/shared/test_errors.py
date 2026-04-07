@@ -6,8 +6,9 @@ from shared.errors import (
     ApiUnavailableError,
     ConfigurationError,
     CredentialError,
-    EngagementManagerError,
     GenerationError,
+    MothershipError,
+    ServerLifecycleError,
 )
 
 
@@ -15,28 +16,34 @@ class TestErrorHierarchy:
     """Verify each error class inherits correctly."""
 
     def test_base_is_exception(self):
-        assert issubclass(EngagementManagerError, Exception)
+        assert issubclass(MothershipError, Exception)
 
     def test_configuration_error_hierarchy(self):
-        assert issubclass(ConfigurationError, EngagementManagerError)
+        assert issubclass(ConfigurationError, MothershipError)
         err = ConfigurationError("missing field 'x'")
-        assert isinstance(err, EngagementManagerError)
+        assert isinstance(err, MothershipError)
         assert isinstance(err, Exception)
 
     def test_api_unavailable_error_hierarchy(self):
-        assert issubclass(ApiUnavailableError, EngagementManagerError)
+        assert issubclass(ApiUnavailableError, MothershipError)
         err = ApiUnavailableError("service down")
-        assert isinstance(err, EngagementManagerError)
+        assert isinstance(err, MothershipError)
 
     def test_credential_error_hierarchy(self):
-        assert issubclass(CredentialError, EngagementManagerError)
+        assert issubclass(CredentialError, MothershipError)
         err = CredentialError("IMAGEN_API_KEY")
-        assert isinstance(err, EngagementManagerError)
+        assert isinstance(err, MothershipError)
 
     def test_generation_error_hierarchy(self):
-        assert issubclass(GenerationError, EngagementManagerError)
+        assert issubclass(GenerationError, MothershipError)
         err = GenerationError("quota exceeded")
-        assert isinstance(err, EngagementManagerError)
+        assert isinstance(err, MothershipError)
+
+    def test_server_lifecycle_error_hierarchy(self):
+        assert issubclass(ServerLifecycleError, MothershipError)
+        err = ServerLifecycleError("server failed to start")
+        assert isinstance(err, MothershipError)
+        assert isinstance(err, Exception)
 
 
 class TestCredentialSafety:
@@ -85,7 +92,8 @@ class TestErrorMessages:
             ApiUnavailableError("test"),
             CredentialError("KEY"),
             GenerationError("test"),
+            ServerLifecycleError("test"),
         ]
         for err in errors:
-            with pytest.raises(EngagementManagerError):
+            with pytest.raises(MothershipError):
                 raise err

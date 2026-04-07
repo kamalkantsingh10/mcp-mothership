@@ -1,23 +1,23 @@
-"""Error class hierarchy for Engagement Manager.
+"""Error class hierarchy for MCP Mothership.
 
-All project errors inherit from EngagementManagerError.
+All project errors inherit from MothershipError.
 Credential values are never included in error messages.
 """
 
 
-class EngagementManagerError(Exception):
+class MothershipError(Exception):
     """Base error — all project errors inherit from this."""
 
 
-class ConfigurationError(EngagementManagerError):
+class ConfigurationError(MothershipError):
     """Missing or invalid configuration."""
 
 
-class ApiUnavailableError(EngagementManagerError):
+class ApiUnavailableError(MothershipError):
     """External API is unreachable or returning errors."""
 
 
-class CredentialError(EngagementManagerError):
+class CredentialError(MothershipError):
     """Authentication/authorization failure (never includes credential values).
 
     Accepts a credential *name* (e.g., "IMAGEN_API_KEY") but enforces
@@ -29,5 +29,9 @@ class CredentialError(EngagementManagerError):
         super().__init__(f"Credential '{credential_name}' {reason}")
 
 
-class GenerationError(EngagementManagerError):
+class GenerationError(MothershipError):
     """Content generation failed (bad input, quota, model error)."""
+
+
+class ServerLifecycleError(MothershipError):
+    """MCP server failed to start, stop, or encountered a lifecycle issue."""

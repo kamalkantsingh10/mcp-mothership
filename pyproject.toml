@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "engagement-manager"
+name = "mcp-mothership"
 version = "0.1.0"
-description = "MCP servers for engagement management workflows"
+description = "MCP server management platform — orchestrates multiple MCP servers with shared configuration, process management, and logging"
 package-mode = false
 
 [tool.poetry.dependencies]
@@ -10,6 +10,8 @@ mcp = ">=1.26.0"
 google-genai = ">=1.0.0"
 pydantic-settings = "*"
 pyyaml = "*"
+fastapi = "*"
+uvicorn = {version = "*", extras = ["standard"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

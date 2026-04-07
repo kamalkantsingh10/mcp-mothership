@@ -1,0 +1,7 @@
+name: imagen
+description: "Image generation via Vertex AI Nano Banana Pro"
+entry_point: servers.imagen.server
+port: 8101
+env_vars:
+  - IMAGEN_GCP_PROJECT
+  - IMAGEN_GCP_REGION

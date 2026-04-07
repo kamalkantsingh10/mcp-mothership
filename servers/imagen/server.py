@@ -1,7 +1,6 @@
 """Imagen MCP server — generates images via Vertex AI Nano Banana Pro.
 
-Exposes a single `generate_image` tool over MCP stdio transport.
-stdout is reserved for MCP protocol; all logging goes to stderr.
+Exposes a single `generate_image` tool over MCP Streamable HTTP transport.
 """
 
 import json
@@ -19,7 +18,7 @@ from mcp.server.fastmcp import FastMCP
 
 from servers.imagen.config import ImagenConfig
 from shared.errors import ApiUnavailableError, CredentialError, GenerationError
-from shared.logging import setup_logging
+from shared.logging_config import setup_logging
 
 # Gemini supported aspect ratios and their decimal values
 SUPPORTED_ASPECT_RATIOS: list[tuple[str, float]] = [
@@ -33,7 +32,7 @@ SUPPORTED_ASPECT_RATIOS: list[tuple[str, float]] = [
 logger = logging.getLogger(__name__)
 
 config = ImagenConfig.from_yaml(config_path="config.yaml")
-setup_logging(config.log_level)
+setup_logging(config.log_level, log_name="imagen")
 
 logger.info("Imagen MCP server starting up")
 logger.info("Config: model=%s, region=%s, output_dir=%s", config.imagen_model, config.imagen_gcp_region, config.default_output_dir)
@@ -73,11 +72,16 @@ except Exception as e:
         reason="failed to initialize API client — check credentials",
     ) from e
 
-mcp = FastMCP("imagen")
+mcp = FastMCP("imagen", host="0.0.0.0", port=config.port)
 logger.info("MCP server created, ready to accept connections")
 
 # In-memory session store for multi-turn conversational image generation
 _sessions: dict[str, Any] = {}
+
+# In-memory metrics counters
+_request_count: int = 0
+_error_count: int = 0
+_last_request_time: str | None = None
 
 
 def _sanitize_filename(text: str, max_len: int = 50) -> str:
@@ -136,6 +140,26 @@ async def generate_image(
         JSON string with session_id and image_path:
         {"session_id": "...", "image_path": "/path/to/image.png"}
     """
+    global _request_count, _error_count, _last_request_time
+    _request_count += 1
+    _last_request_time = datetime.now(timezone.utc).isoformat()
+
+    try:
+        return await _generate_image_impl(prompt, width, height, style, output_path, session_id)
+    except Exception:
+        _error_count += 1
+        raise
+
+
+async def _generate_image_impl(
+    prompt: str,
+    width: int,
+    height: int,
+    style: str,
+    output_path: str | None,
+    session_id: str | None,
+) -> str:
+    """Internal implementation of generate_image (metrics tracked by wrapper)."""
     if not prompt or not prompt.strip():
         raise GenerationError("Prompt must not be empty or whitespace-only")
 
@@ -250,6 +274,17 @@ async def generate_image(
     return json.dumps({"session_id": session_id, "image_path": output_path_resolved})
 
 
+@mcp.custom_route("/metrics", methods=["GET"])
+async def metrics(request):
+    """Expose server metrics as JSON."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({
+        "request_count": _request_count,
+        "error_count": _error_count,
+        "last_request_time": _last_request_time,
+    })
+
+
 if __name__ == "__main__":
-    logger.info("Starting MCP stdio transport")
-    mcp.run(transport="stdio")
+    logger.info("Starting MCP Streamable HTTP transport on port %d", config.port)
+    mcp.run(transport="streamable-http")

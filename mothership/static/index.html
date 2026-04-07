@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Mothership</title>
+    <style>
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-sidebar: #1b2a3d;
+            --bg-sidebar-hover: #243447;
+            --bg-topbar: #1b2a3d;
+            --bg-card: #ffffff;
+            --bg-card-hover: #fafbfc;
+            --bg-metric: #f7f9fb;
+            --bg-input: #f0f2f5;
+            --bg-log: #1b2a3d;
+            --border: #e5e9ef;
+            --border-light: #eef1f5;
+            --text-primary: #1b2a3d;
+            --text-secondary: #5a6a7e;
+            --text-muted: #8d99a8;
+            --text-white: #ffffff;
+            --text-white-muted: #8ea4be;
+            --accent: #2d6cdf;
+            --accent-hover: #2559b8;
+            --accent-light: #e8f0fd;
+            --green: #22b07d;
+            --green-bg: #e6f9f1;
+            --green-text: #15804d;
+            --red: #e5484d;
+            --red-bg: #fce8e8;
+            --red-text: #c4262b;
+            --yellow: #e5a100;
+            --yellow-bg: #fef6e0;
+            --orange: #e8590c;
+            --radius: 10px;
+            --radius-sm: 8px;
+            --radius-xs: 6px;
+            --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+            --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 60px;
+            background: var(--bg-sidebar);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 0;
+            gap: 8px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 20;
+        }
+        .sidebar-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            background: linear-gradient(135deg, var(--accent), #4f8ef7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--text-white);
+            margin-bottom: 16px;
+        }
+        .sidebar-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-white-muted);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .sidebar-icon:hover { background: var(--bg-sidebar-hover); color: var(--text-white); }
+        .sidebar-icon.active { background: var(--bg-sidebar-hover); color: var(--text-white); }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            margin-left: 60px;
+            min-height: 100vh;
+        }
+
+        /* Top Bar */
+        .topbar {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 0 32px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .topbar-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .topbar-tabs {
+            display: flex;
+            gap: 4px;
+        }
+        .topbar-tab {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+            background: none;
+            font-family: inherit;
+        }
+        .topbar-tab:hover { background: var(--bg-input); }
+        .topbar-tab.active {
+            background: var(--bg-sidebar);
+            color: var(--text-white);
+        }
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-input);
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+        .status-badge .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .btn-primary {
+            padding: 7px 18px;
+            border-radius: var(--radius-xs);
+            background: var(--accent);
+            color: var(--text-white);
+            font-size: 0.78rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        /* Content Area */
+        .content {
+            padding: 24px 32px;
+        }
+
+        /* Summary Cards */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-card);
+        }
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .summary-card-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .summary-card-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-xs);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .summary-card-icon.green { background: var(--green-bg); color: var(--green); }
+        .summary-card-icon.red { background: var(--red-bg); color: var(--red); }
+        .summary-card-icon.blue { background: var(--accent-light); color: var(--accent); }
+        .summary-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+        .summary-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+        .summary-sub .up { color: var(--green-text); }
+        .summary-sub .down { color: var(--red-text); }
+
+        /* Server Table */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .table-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead th {
+            text-align: left;
+            padding: 10px 16px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-metric);
+        }
+        tbody tr {
+            border-bottom: 1px solid var(--border-light);
+            transition: background 0.1s;
+        }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: #f7f9fb; }
+        tbody td {
+            padding: 14px 16px;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+
+        .server-name-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .server-name-text {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .server-desc-text {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        /* Status Pill */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 500;
+        }
+        .status-pill .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+        .status-pill.running { background: var(--green-bg); color: var(--green-text); }
+        .status-pill.running .dot { background: var(--green); }
+        .status-pill.stopped { background: var(--bg-input); color: var(--text-muted); }
+        .status-pill.stopped .dot { background: var(--text-muted); }
+        .status-pill.crashed { background: var(--red-bg); color: var(--red-text); }
+        .status-pill.crashed .dot { background: var(--red); }
+
+        .port-badge {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .metric-cell {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .metric-cell.dimmed { color: var(--text-muted); }
+
+        .tool-badge {
+            display: inline-block;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.65rem;
+            color: var(--accent);
+            background: var(--accent-light);
+            border-radius: 4px;
+            padding: 2px 7px;
+            margin-right: 4px;
+        }
+
+        /* Action Buttons */
+        .btn-action {
+            padding: 5px 14px;
+            border-radius: var(--radius-xs);
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+            margin-right: 4px;
+        }
+        .btn-action:hover { border-color: #ccc; background: var(--bg-metric); }
+        .btn-action:active { transform: scale(0.97); }
+        .btn-action:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+        .btn-action.start { color: var(--green-text); border-color: var(--green); }
+        .btn-action.start:hover { background: var(--green-bg); }
+        .btn-action.stop { color: var(--red-text); border-color: var(--red); }
+        .btn-action.stop:hover { background: var(--red-bg); }
+        .btn-action.logs { color: var(--accent); border-color: var(--accent); }
+        .btn-action.logs:hover { background: var(--accent-light); }
+        .btn-action.logs.active { background: var(--accent-light); }
+
+        /* Log Panel */
+        .log-row { display: none; }
+        .log-row.open { display: table-row; }
+        .log-row td {
+            padding: 0;
+            background: var(--bg-log);
+        }
+        .log-panel {
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 14px 20px;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            font-size: 0.7rem;
+            line-height: 1.7;
+        }
+        .log-panel::-webkit-scrollbar { width: 5px; }
+        .log-panel::-webkit-scrollbar-track { background: transparent; }
+        .log-panel::-webkit-scrollbar-thumb { background: #3a4f66; border-radius: 3px; }
+        .log-line {
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #a0b4c8;
+        }
+        .log-line.error { color: #f87171; }
+        .log-line.warning { color: #fbbf24; }
+        .log-line.debug { color: #5a6a7e; }
+        .log-empty { color: #5a6a7e; font-style: italic; }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 60px 20px;
+            font-size: 0.85rem;
+        }
+
+        /* Toast */
+        .error-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--red);
+            color: var(--red-text);
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            animation: slideIn 0.2s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">M</div>
+        <div class="sidebar-icon active" title="Servers">S</div>
+    </nav>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-title">MCP Mothership</span>
+                <div class="topbar-tabs">
+                    <button class="topbar-tab active">Servers</button>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="status-badge">
+                    <div class="dot"></div>
+                    <span id="status-text">Connecting...</span>
+                </div>
+                <button class="btn-primary" onclick="rescan()">Rescan</button>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Summary Cards -->
+            <div class="summary-row" id="summary-row">
+                <div class="summary-card">
+                    <div class="summary-card-header">
+                        <span class="summary-card-title">Total Servers</span>
+                        <div class="summary-card-icon blue">S</div>
+                    </div>
+                    <div class="summary-value" id="sum-total">0</div>
+                    <div class="summary-sub">registered</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-header">
+                        <span class="summary-card-title">Running</span>
+                        <div class="summary-card-icon green">R</div>
+                    </div>
+                    <div class="summary-value" id="sum-running">0</div>
+                    <div class="summary-sub" id="sum-running-sub">active</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-header">
+                        <span class="summary-card-title">Total Requests</span>
+                        <div class="summary-card-icon blue">Q</div>
+                    </div>
+                    <div class="summary-value" id="sum-requests">0</div>
+                    <div class="summary-sub">across all servers</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-card-header">
+                        <span class="summary-card-title">Errors</span>
+                        <div class="summary-card-icon red">E</div>
+                    </div>
+                    <div class="summary-value" id="sum-errors">0</div>
+                    <div class="summary-sub">across all servers</div>
+                </div>
+            </div>
+
+            <!-- Server Table -->
+            <div class="table-card">
+                <div class="table-header">
+                    <span class="table-title">Managed Servers</span>
+                </div>
+                <div id="server-table-wrap">
+                    <div class="empty-state">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-toast" class="error-toast"></div>
+
+    <script>
+        let polling = null;
+        let openLogs = {};
+        let logPollers = {};
+
+        function formatUptime(seconds) {
+            if (seconds == null) return '\u2014';
+            const s = Math.floor(seconds);
+            if (s < 60) return s + 's';
+            if (s < 3600) return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            return h + 'h ' + m + 'm';
+        }
+
+        function formatTime(iso) {
+            if (!iso) return '\u2014';
+            try { return new Date(iso).toLocaleTimeString(); }
+            catch { return iso; }
+        }
+
+        function classifyLogLine(line) {
+            if (/ ERROR /.test(line)) return 'error';
+            if (/ WARNING /.test(line)) return 'warning';
+            if (/ DEBUG /.test(line)) return 'debug';
+            return '';
+        }
+
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function renderTools(tools) {
+            if (!tools || tools.length === 0) return '<span style="color:var(--text-muted)">\u2014</span>';
+            return tools.map(t => `<span class="tool-badge">${esc(t)}</span>`).join('');
+        }
+
+        function renderServerRow(s) {
+            const isRunning = s.status === 'running';
+            const btnClass = isRunning ? 'stop' : 'start';
+            const btnText = isRunning ? 'Stop' : 'Start';
+            const action = isRunning ? 'stop' : 'start';
+            const dim = !isRunning ? ' dimmed' : '';
+            const logOpen = openLogs[s.name] ? 'open' : '';
+            const logActive = openLogs[s.name] ? 'active' : '';
+
+            return `<tr id="row-${esc(s.name)}">
+                <td>
+                    <div class="server-name-cell">
+                        <span class="server-name-text">${esc(s.name)}</span>
+                        <span class="server-desc-text">${esc(s.description)}</span>
+                    </div>
+                </td>
+                <td><span class="status-pill ${s.status}"><span class="dot"></span>${s.status}</span></td>
+                <td class="port-badge">${s.port || '\u2014'}</td>
+                <td class="metric-cell${dim}">${formatUptime(s.uptime)}</td>
+                <td class="metric-cell${dim}">${s.request_count}</td>
+                <td class="metric-cell${dim}">${s.error_count}</td>
+                <td class="metric-cell${dim}">${formatTime(s.last_request_time)}</td>
+                <td>${renderTools(s.tools)}</td>
+                <td>
+                    <button class="btn-action ${btnClass}" onclick="serverAction('${esc(s.name)}','${action}',this)">${btnText}</button>
+                    <button class="btn-action logs ${logActive}" onclick="toggleLogs('${esc(s.name)}')">Logs</button>
+                </td>
+            </tr>
+            <tr class="log-row ${logOpen}" id="logrow-${esc(s.name)}">
+                <td colspan="9">
+                    <div class="log-panel" id="logs-${esc(s.name)}">
+                        <div class="log-empty">Loading logs...</div>
+                    </div>
+                </td>
+            </tr>`;
+        }
+
+        function renderTable(servers) {
+            return `<table>
+                <thead>
+                    <tr>
+                        <th>Server</th>
+                        <th>Status</th>
+                        <th>Port</th>
+                        <th>Uptime</th>
+                        <th>Requests</th>
+                        <th>Errors</th>
+                        <th>Last Request</th>
+                        <th>Tools</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>${servers.map(renderServerRow).join('')}</tbody>
+            </table>`;
+        }
+
+        let lastServerNames = [];
+
+        async function fetchServers() {
+            try {
+                const resp = await fetch('/api/servers');
+                const data = await resp.json();
+                const wrap = document.getElementById('server-table-wrap');
+                const statusText = document.getElementById('status-text');
+
+                if (!data.servers || data.servers.length === 0) {
+                    wrap.innerHTML = '<div class="empty-state">No servers registered</div>';
+                    statusText.textContent = '0 servers';
+                    lastServerNames = [];
+                    return;
+                }
+
+                const servers = data.servers;
+                const running = servers.filter(s => s.status === 'running').length;
+                const totalReqs = servers.reduce((a, s) => a + s.request_count, 0);
+                const totalErrs = servers.reduce((a, s) => a + s.error_count, 0);
+
+                document.getElementById('sum-total').textContent = servers.length;
+                document.getElementById('sum-running').textContent = running;
+                document.getElementById('sum-requests').textContent = totalReqs;
+                document.getElementById('sum-errors').textContent = totalErrs;
+                statusText.textContent = `${running}/${servers.length} running`;
+
+                // Check if server list changed (added/removed) — full re-render needed
+                const newNames = servers.map(s => s.name).join(',');
+                if (newNames !== lastServerNames.join(',')) {
+                    wrap.innerHTML = renderTable(servers);
+                    lastServerNames = servers.map(s => s.name);
+                    // Re-fetch logs for any open panels after full re-render
+                    for (const name of Object.keys(openLogs)) {
+                        if (openLogs[name]) fetchLogs(name);
+                    }
+                } else {
+                    // Incremental update — update each row's data cells without touching log panels
+                    updateTableInPlace(servers);
+                }
+            } catch (e) {
+                console.error('Failed to fetch servers:', e);
+                document.getElementById('status-text').textContent = 'Disconnected';
+            }
+        }
+
+        function updateTableInPlace(servers) {
+            for (const s of servers) {
+                const isRunning = s.status === 'running';
+                const dim = !isRunning ? ' dimmed' : '';
+                const btnClass = isRunning ? 'stop' : 'start';
+                const btnText = isRunning ? 'Stop' : 'Start';
+                const action = isRunning ? 'stop' : 'start';
+                const logActive = openLogs[s.name] ? 'active' : '';
+
+                // Find the data row by ID
+                const row = document.getElementById('row-' + s.name);
+                if (!row) continue;
+
+                // Update individual cells
+                const cells = row.querySelectorAll('td');
+                // [0] name — skip, doesn't change
+                // [1] status pill
+                cells[1].innerHTML = `<span class="status-pill ${s.status}"><span class="dot"></span>${s.status}</span>`;
+                // [2] port — skip
+                // [3] uptime
+                cells[3].className = 'metric-cell' + dim;
+                cells[3].textContent = formatUptime(s.uptime);
+                // [4] requests
+                cells[4].className = 'metric-cell' + dim;
+                cells[4].textContent = s.request_count;
+                // [5] errors
+                cells[5].className = 'metric-cell' + dim;
+                cells[5].textContent = s.error_count;
+                // [6] last request
+                cells[6].className = 'metric-cell' + dim;
+                cells[6].textContent = formatTime(s.last_request_time);
+                // [7] tools
+                cells[7].innerHTML = renderTools(s.tools);
+                // [8] actions
+                cells[8].innerHTML = `<button class="btn-action ${btnClass}" onclick="serverAction('${esc(s.name)}','${action}',this)">${btnText}</button><button class="btn-action logs ${logActive}" onclick="toggleLogs('${esc(s.name)}')">Logs</button>`;
+
+                // Update log-row visibility
+                const logRow = document.getElementById('logrow-' + s.name);
+                if (logRow) {
+                    if (openLogs[s.name]) logRow.classList.add('open');
+                    else logRow.classList.remove('open');
+                }
+            }
+        }
+
+        async function serverAction(name, action, btn) {
+            btn.disabled = true;
+            try {
+                const resp = await fetch(`/api/servers/${encodeURIComponent(name)}/${action}`, { method: 'POST' });
+                const data = await resp.json();
+                if (!data.ok) showError(data.error || 'Action failed');
+                await fetchServers();
+            } catch (e) {
+                showError('Network error');
+            }
+        }
+
+        async function rescan() {
+            try {
+                const resp = await fetch('/api/rescan', { method: 'POST' });
+                const data = await resp.json();
+                if (data.ok) await fetchServers();
+                else showError(data.error || 'Rescan failed');
+            } catch (e) {
+                showError('Network error');
+            }
+        }
+
+        function toggleLogs(name) {
+            const logRow = document.getElementById('logrow-' + name);
+            const logBtn = document.querySelector(`#row-${name} .btn-action.logs`);
+
+            if (openLogs[name]) {
+                openLogs[name] = false;
+                if (logPollers[name]) { clearInterval(logPollers[name]); delete logPollers[name]; }
+                if (logRow) logRow.classList.remove('open');
+                if (logBtn) logBtn.classList.remove('active');
+            } else {
+                openLogs[name] = true;
+                if (logRow) logRow.classList.add('open');
+                if (logBtn) logBtn.classList.add('active');
+                fetchLogs(name);
+                logPollers[name] = setInterval(() => fetchLogs(name), 5000);
+            }
+        }
+
+        async function fetchLogs(name) {
+            const panel = document.getElementById('logs-' + name);
+            if (!panel) return;
+            try {
+                const resp = await fetch(`/api/servers/${encodeURIComponent(name)}/logs?lines=50`);
+                const data = await resp.json();
+                if (!data.lines || data.lines.length === 0) {
+                    panel.innerHTML = '<div class="log-empty">No log entries</div>';
+                    return;
+                }
+                panel.innerHTML = data.lines.map(line => {
+                    const cls = classifyLogLine(line);
+                    return `<div class="log-line ${cls}">${esc(line)}</div>`;
+                }).join('');
+                panel.scrollTop = panel.scrollHeight;
+            } catch (e) {
+                panel.innerHTML = '<div class="log-empty">Failed to load logs</div>';
+            }
+        }
+
+        function showError(msg) {
+            const toast = document.getElementById('error-toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        }
+
+        fetchServers();
+        polling = setInterval(fetchServers, 5000);
+    </script>
+</body>
+</html>

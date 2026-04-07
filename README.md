@@ -1,165 +1,230 @@
-# Engagement Manager
+# MCP Mothership
 
-MCP server for AI-powered image generation via Google's Nano Banana Pro (Gemini 3 Pro Image). Supports conversational multi-turn image refinement through Claude Code.
+A centralized MCP server manager for developers who build multiple agentic projects. Instead of duplicating MCP server setup across every project, Mothership runs all your MCP servers from a single location. Any agentic project connects to the Mothership over the network — no per-project MCP infrastructure needed.
 
-## Features
+## What It Does
 
-- Generate images from text prompts via MCP tool
-- Iterative image refinement through multi-turn chat sessions
-- Style control via prompt engineering
-- Automatic aspect ratio mapping from width/height dimensions
-- Output path sandboxing for safe file writes
-- Credential-safe error handling (no secrets in error messages)
+- **Process management** — start, stop, and monitor MCP servers as isolated subprocesses from a single CLI command
+- **Network transport** — all MCP servers run on Streamable HTTP, accessible from any project on your machine
+- **Web dashboard** — see server status, metrics (uptime, requests, errors), and per-server logs at `http://localhost:8080`
+- **Convention-based registration** — add a new MCP server by dropping a `mothership.yaml` config file
+- **Crash detection** — automatic health monitoring with 3-second polling
+
+The first managed server is **Imagen** — AI image generation via Google's Gemini (Nano Banana Pro) with multi-turn conversational refinement.
 
 ## Prerequisites
 
 - Python 3.10+
-- [Poetry](https://python-poetry.org/docs/#installation) (Python package manager)
-- **AI Studio** (easiest): A Google AI Studio API key, OR
-- **Vertex AI**: A GCP project + [gcloud CLI](https://cloud.google.com/sdk/docs/install)
+- [Poetry](https://python-poetry.org/docs/#installation)
+- For Imagen: a Google AI Studio API key OR a GCP project with Vertex AI enabled
 
-## Setup
+## Quick Start
 
-### 1. Install Dependencies
+### 1. Clone and install
 
 ```bash
+git clone <repo-url> mcp-mothership
+cd mcp-mothership
 poetry install
 ```
 
-### 2. Configure API Credentials
+### 2. Configure credentials
 
 ```bash
 cp .env.example .env
 ```
 
-**Option A — AI Studio (recommended for getting started):**
+Edit `.env` and set your Imagen credentials:
 
-1. Get an API key from https://aistudio.google.com/api-keys
-2. Edit `.env`:
-   ```
-   IMAGEN_API_KEY=your-api-key
-   ```
+```env
+# Option A — AI Studio (easiest)
+IMAGEN_API_KEY=your-api-key
 
-That's it — no GCP project or gcloud auth needed.
-
-**Option B — Vertex AI (for production/enterprise):**
-
-1. Create or select a GCP project at https://console.cloud.google.com
-2. Enable the Vertex AI API:
-   ```bash
-   gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
-   ```
-3. Grant the required IAM role:
-   ```bash
-   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
-     --member="user:YOUR_EMAIL@example.com" \
-     --role="roles/aiplatform.user"
-   ```
-4. Authenticate:
-   ```bash
-   gcloud auth application-default login
-   ```
-5. Edit `.env`:
-   ```
-   IMAGEN_GCP_PROJECT=your-gcp-project-id
-   ```
-
-If both `IMAGEN_API_KEY` and `IMAGEN_GCP_PROJECT` are set, AI Studio takes priority.
-
-### 5. Configure Operational Settings (Optional)
-
-Edit `config.yaml` to customize defaults:
-
-```yaml
-log_level: INFO
-
-imagen:
-  default_output_dir: ./output      # Where generated images are saved
-  default_width: 1024               # Default image width
-  default_height: 1024              # Default image height
+# Option B — Vertex AI
+# IMAGEN_GCP_PROJECT=your-gcp-project-id
 ```
 
-Config priority: env vars > `.env` file > `config.yaml` > defaults
+For AI Studio, get a key at https://aistudio.google.com/api-keys. For Vertex AI setup details, see [Vertex AI Configuration](#vertex-ai-configuration) below.
 
-### 6. Register MCP Server in Claude Code
+### 3. Start the Mothership
 
-**Option A** - Project-level `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "imagen": {
-      "type": "stdio",
-      "command": "poetry",
-      "args": ["run", "python", "servers/imagen/server.py"],
-      "env": {
-        "IMAGEN_GCP_PROJECT": "${IMAGEN_GCP_PROJECT}"
-      }
-    }
-  }
-}
-```
-
-**Option B** - Via CLI:
 ```bash
-claude mcp add imagen -- poetry run python servers/imagen/server.py
+poetry run python -m mothership
 ```
 
-### 7. Verify Setup
+This starts the manager on port 8080. Open `http://localhost:8080` for the dashboard.
+
+### 4. Verify
 
 ```bash
 poetry run pytest -v
 ```
 
-## Usage
+## Connecting From a Claude Code Project
 
-The `generate_image` MCP tool accepts:
+The main value of Mothership is that your MCP servers are always running and accessible from any project. Here's how to connect from a Claude Code project.
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `prompt` | string | (required) | Text description or refinement instruction |
-| `width` | int | 1024 | Image width (mapped to nearest aspect ratio) |
-| `height` | int | 1024 | Image height (mapped to nearest aspect ratio) |
-| `style` | string | `"natural"` | Style direction (e.g., `"digital art"`, `"watercolor"`) |
-| `output_path` | string | auto-generated | Custom output path (must be within output dir) |
-| `session_id` | string | `null` | Pass a previous session_id to refine an existing image |
+### Step 1: Start the Mothership (if not already running)
 
-**Returns** JSON:
-```json
-{"session_id": "uuid", "image_path": "/absolute/path/to/image.png"}
+In the Mothership directory:
+
+```bash
+poetry run python -m mothership
 ```
 
-### Multi-turn Refinement
+Then start the Imagen server from the dashboard at `http://localhost:8080`, or it can be started via the API:
 
-1. First call (no `session_id`) creates a new chat session and returns a `session_id`
-2. Subsequent calls with the same `session_id` refine the image conversationally
-3. The model maintains visual consistency across turns
+```bash
+curl -X POST http://localhost:8080/api/servers/imagen/start
+```
 
-Supported aspect ratios: `1:1`, `9:16`, `16:9`, `4:3`, `3:4`
+### Step 2: Configure your Claude Code project
 
-## Environment Variables Reference
+In your project directory, add the Mothership's Imagen server to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "imagen": {
+      "type": "streamable-http",
+      "url": "http://localhost:8101/mcp"
+    }
+  }
+}
+```
+
+That's it. Claude Code will connect to the running Imagen server over HTTP. No need to install dependencies, configure credentials, or run anything in your project.
+
+### Step 3: Use it
+
+Ask Claude to generate images:
+
+> "Generate an image of a sunset over mountains"
+
+> "Make it more dramatic with darker clouds" (uses session-based refinement)
+
+The `generate_image` tool is automatically available via MCP's `tools/list`.
+
+### Adding to Multiple Projects
+
+Every Claude Code project that needs image generation gets the same `.mcp.json` entry — they all connect to the same running Imagen server. No duplication.
+
+## Dashboard
+
+The web dashboard at `http://localhost:8080` shows:
+
+- Summary cards (total servers, running count, request/error totals)
+- Server table with status, port, uptime, request/error counts
+- Start/Stop controls per server
+- Expandable log viewer per server with color-coded log levels
+- Auto-refreshes every 5 seconds
+
+## REST API
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/servers` | GET | List all servers with status and metrics |
+| `/api/servers/{name}/start` | POST | Start a server |
+| `/api/servers/{name}/stop` | POST | Stop a server |
+| `/api/servers/{name}/logs?lines=100` | GET | Tail server log file |
+| `/api/rescan` | POST | Rescan for new server configs |
+
+## Adding a New MCP Server
+
+1. Create `servers/<name>/` with `server.py`, `config.py`, and `__init__.py`
+2. Add a `mothership.yaml` in the server directory:
+
+```yaml
+name: my-server
+description: "What this server does"
+entry_point: servers.my_server.server
+port: 8102  # optional — auto-assigned if omitted
+env_vars:
+  - MY_API_KEY
+```
+
+3. Hit "Rescan" in the dashboard (or `POST /api/rescan`)
+4. The new server appears in the dashboard, ready to start
+
+## Configuration
+
+### Operational Settings
+
+Edit `config.yaml`:
+
+```yaml
+log_level: INFO
+
+imagen:
+  default_output_dir: ./output
+  default_width: 1024
+  default_height: 1024
+```
+
+### Manager Settings
+
+Set via environment variables or `.env`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MOTHERSHIP_PORT` | `8080` | Dashboard/API port |
+| `MOTHERSHIP_LOG_DIR` | `./logs` | Log file directory |
+
+### Imagen Settings
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `IMAGEN_API_KEY` | One of these | — | AI Studio API key |
-| `IMAGEN_GCP_PROJECT` | is required | — | GCP project ID (Vertex AI mode) |
-| `IMAGEN_GCP_REGION` | No | `us-central1` | GCP region (Vertex AI only) |
+| `IMAGEN_GCP_PROJECT` | is required | — | GCP project ID (Vertex AI) |
+| `IMAGEN_GCP_REGION` | No | `us-central1` | GCP region |
 | `IMAGEN_MODEL` | No | `gemini-3-pro-image-preview` | Model ID |
-| `LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+
+Config priority: env vars > `.env` file > `config.yaml` > defaults
+
+### Vertex AI Configuration
+
+1. Enable the Vertex AI API:
+   ```bash
+   gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
+   ```
+2. Grant IAM role:
+   ```bash
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+     --member="user:YOUR_EMAIL@example.com" \
+     --role="roles/aiplatform.user"
+   ```
+3. Authenticate:
+   ```bash
+   gcloud auth application-default login
+   ```
+4. Set in `.env`:
+   ```
+   IMAGEN_GCP_PROJECT=your-gcp-project-id
+   ```
 
 ## Project Structure
 
 ```
-servers/imagen/
-  config.py          # ImagenConfig (pydantic-settings, loads from env/.env/yaml)
-  server.py          # MCP server with generate_image tool
-shared/
-  config.py          # BaseServerConfig with YAML support
-  errors.py          # Typed error hierarchy
-  logging.py         # stderr-only logging setup
-tests/
-  imagen/            # Server and config tests
-  shared/            # Shared module tests
+mothership/              # Manager application
+  __main__.py            # Entry point (python -m mothership)
+  manager.py             # Process manager (start, stop, health, metrics)
+  discovery.py           # Config scanner (mothership.yaml files)
+  api.py                 # FastAPI REST API + static serving
+  config.py              # MothershipConfig
+  static/index.html      # Dashboard UI
+
+servers/imagen/          # Imagen MCP server
+  server.py              # FastMCP server + generate_image tool + /metrics
+  config.py              # ImagenConfig
+  mothership.yaml        # Registration config
+
+shared/                  # Shared modules
+  errors.py              # Error hierarchy (MothershipError, etc.)
+  config.py              # Base config classes
+  logging_config.py      # Per-server rotating log setup
+
+logs/                    # Runtime log files (gitignored)
+tests/                   # Mirrors source structure
 ```
 
 ## Running Tests
@@ -168,7 +233,8 @@ tests/
 poetry run pytest -v
 ```
 
-If you have ROS system packages installed, prefix with:
+If you have ROS system packages installed:
+
 ```bash
 PYTHONPATH="" poetry run pytest -v
 ```
@@ -176,19 +242,16 @@ PYTHONPATH="" poetry run pytest -v
 ## Troubleshooting
 
 **"Credential ... is missing" on startup:**
-- Set either `IMAGEN_API_KEY` (AI Studio) or `IMAGEN_GCP_PROJECT` (Vertex AI) in `.env`
+Set either `IMAGEN_API_KEY` or `IMAGEN_GCP_PROJECT` in `.env`.
 
-**"Permission denied" or credential errors (Vertex AI):**
-- Run `gcloud auth application-default login`
-- Verify your account has `roles/aiplatform.user` on the project
+**"Permission denied" (Vertex AI):**
+Run `gcloud auth application-default login` and verify `roles/aiplatform.user`.
 
-**"API not enabled" errors (Vertex AI):**
-```bash
-gcloud services enable aiplatform.googleapis.com --project=YOUR_PROJECT_ID
-```
+**Server won't start from dashboard:**
+Check `logs/<server_name>.log` for details. Common causes: missing credentials, port already in use.
 
-**"ConfigurationError" on startup:**
-- Check that `config.yaml` is valid YAML
+**Dashboard shows "Disconnected":**
+The Mothership process isn't running. Start it with `poetry run python -m mothership`.
 
 **ROS/system Python conflicts in tests:**
-- Use `PYTHONPATH="" poetry run pytest` — the `pyproject.toml` already disables ROS pytest plugins
+Use `PYTHONPATH="" poetry run pytest`.
