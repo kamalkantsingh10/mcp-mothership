@@ -66,6 +66,18 @@ MFR31: Imagen is registered as the first managed MCP server via a config file
 MFR32: Project is renamed from Engagement Manager to MCP Mothership across repository, pyproject.toml, and code references
 MFR33: Existing shared modules (config, errors, logging) are retained and available for MCP servers
 
+**Places MCP (New — Epic 7):**
+
+PFR1: `search_places` tool returns up to N places filtered by type (attraction/restaurant/hotel/any), mapping type → Google includedType (tourist_attraction, restaurant, lodging), returning place_id, name, address, latitude, longitude, rating, user_rating_count, primary_type, price_level
+PFR2: `get_place_details` tool returns detailed place info using the specified FieldMask with top-level flattened latitude/longitude
+PFR3: `score_place` tool returns raw scoring signals (place_id, name, lat/long, category, rating, review_count, bayesian_score, price_level, is_open_now, business_status, primary_type, types, editorial_summary, has_editorial, google_maps_uri) with no tiering or value judgments; category inferred from primaryType when None
+PFR4: Bayesian scoring formula `score = (v/(v+m))*R + (m/(v+m))*C` with attractions C=4.3/m=500, restaurants C=4.1/m=100, hotels C=4.0/m=200; missing rating/review count shrinks score toward C
+PFR5: `summarize_reviews` tool returns up to 5 Google reviews as-is in `[{author, rating, text, relative_time}]` shape
+PFR6: `batch_score` tool runs search → top result → score for each query concurrently via httpx.AsyncClient with semaphore=10
+PFR7: All coordinates are decimal-degree WGS84 at 6 decimal places; always top-level latitude/longitude, never a nested location object
+PFR8: Places server validates GOOGLE_PLACES_API_KEY on startup via pydantic-settings and fails fast with a clear error if missing
+PFR9: Every Places API call includes a tight FieldMask for cost discipline; API errors map at the MCP tool boundary to `{error, code: "NOT_FOUND"|"QUOTA"|"AUTH"|"UNKNOWN"}` with no credential leakage
+
 ### NonFunctional Requirements
 
 **Original (Imagen MCP — Epics 1-3):**
@@ -190,6 +202,16 @@ MNFR9-MNFR11: Epic 6 - Dashboard performance
 MNFR12: Epic 4 - 10+ server scalability
 MNFR13-MNFR15: Epic 5 - MCP compliance and transport compatibility
 
+PFR1:  Epic 7 - search_places tool
+PFR2:  Epic 7 - get_place_details tool with FieldMask and flattened coordinates
+PFR3:  Epic 7 - score_place tool raw signals
+PFR4:  Epic 7 - Bayesian scoring formula per category
+PFR5:  Epic 7 - summarize_reviews tool
+PFR6:  Epic 7 - batch_score tool with concurrent execution
+PFR7:  Epic 7 - WGS84 coordinate format and flattening
+PFR8:  Epic 7 - GOOGLE_PLACES_API_KEY validation
+PFR9:  Epic 7 - FieldMask cost discipline and structured error responses
+
 ## Epic List
 
 ### Epic 1: Project Foundation & Configuration
@@ -222,6 +244,11 @@ Agents from any project can connect to MCP servers over Streamable HTTP, discove
 Operator has a web dashboard to see all registered MCP servers at a glance, start/stop them from the browser, view per-server metrics (uptime, requests, errors), and read per-server logs — all updating in near real-time.
 **MFRs covered:** MFR14, MFR15, MFR16, MFR17, MFR18, MFR19, MFR20
 **MNFRs covered:** MNFR4, MNFR9, MNFR10, MNFR11
+
+### Epic 7: Google Places MCP Server
+Operator adds a travel-research capability by dropping `servers/places/mothership.yaml` — the Mothership discovers it, the dashboard surfaces it, and agents can search for attractions/restaurants/hotels, retrieve place details, score places via Bayesian-weighted ranking, read Google reviews, and run batch queries. First true drop-in validation of the Mothership platform (Journey 2). Streamable HTTP transport, shared config/errors, `/metrics` endpoint — no platform code changes. No caching in MVP.
+**PFRs covered:** PFR1, PFR2, PFR3, PFR4, PFR5, PFR6, PFR7, PFR8, PFR9
+**MFRs/MNFRs consumed (via platform):** MFR7, MFR10, MFR11, MFR25-MFR28, MNFR13, MNFR14
 
 ## Epic 1: Project Foundation & Configuration
 
@@ -765,3 +792,146 @@ So that I can monitor activity and diagnose issues without leaving the browser.
 **Given** a server showing which tools it exposes
 **When** the dashboard fetches server data
 **Then** the tools list is displayed for operator reference (MFR16)
+
+## Epic 7: Google Places MCP Server
+
+Operator adds a travel-research capability to the Mothership by dropping a config file. Agents can search for attractions, restaurants, and hotels, fetch full details, score places via Bayesian-weighted ranking, read Google reviews, and batch-score multiple queries. First drop-in MCP beyond Imagen — validates the Mothership platform's core promise.
+
+### Story 7.1: Places MCP Server Foundation
+
+As a developer,
+I want a Places MCP server skeleton registered with the Mothership,
+So that it appears on the dashboard and accepts network traffic over Streamable HTTP using Mothership conventions.
+
+**Acceptance Criteria:**
+
+**Given** a new `servers/places/` package
+**When** the package is created
+**Then** the directory contains `__init__.py`, `server.py`, `config.py`, and `mothership.yaml`
+**And** `servers/places/mothership.yaml` declares name (`places`), description, entry_point (`servers.places.server`), port (assigned or auto), and env_vars including `GOOGLE_PLACES_API_KEY`
+
+**Given** `servers/places/config.py` with `PlacesConfig` extending `BaseServerConfig`
+**When** the server starts with a valid `.env`
+**Then** `GOOGLE_PLACES_API_KEY` is validated via pydantic-settings
+**And** a missing or empty key raises `CredentialError` with a clear message naming the missing variable
+**And** the actual key value is never logged or echoed
+
+**Given** `servers/places/server.py` using FastMCP
+**When** `python -m servers.places.server` is invoked
+**Then** the server starts on `transport="streamable-http"` on its configured port
+**And** a `/metrics` endpoint is exposed returning `{"request_count": N, "error_count": N, "last_request_time": "ISO8601 or null"}`
+**And** a `tools/list` call returns an empty tool list (tool implementations land in 7.2 and 7.3)
+
+**Given** the Mothership manager is running
+**When** it scans `servers/*/mothership.yaml`
+**Then** `places` is discovered and listed with status `stopped`
+**And** the dashboard surfaces Places with start/stop controls — no manager or dashboard code changes required
+
+**Given** a tool-boundary error translator in `servers/places/server.py`
+**When** a typed exception is raised inside a tool implementation
+**Then** the tool returns a structured response `{error: "message", code: "NOT_FOUND" | "QUOTA" | "AUTH" | "UNKNOWN"}`
+**And** `CredentialError` → `AUTH`, `ApiUnavailableError` with HTTP 429 or quota signal → `QUOTA`, Places 404 → `NOT_FOUND`, everything else → `UNKNOWN`
+**And** credential values never appear in the returned payload
+
+**Given** `tests/servers/places/test_config.py` and `tests/servers/places/test_error_mapping.py`
+**When** I run `poetry run pytest tests/servers/places/`
+**Then** all config validation and error-mapping tests pass
+
+### Story 7.2: Search & Details Tools
+
+As an agent,
+I want to search for places by query and fetch full details for a place,
+So that I can surface tourist attractions, restaurants, and hotels with structured, flattened data.
+
+**Acceptance Criteria:**
+
+**Given** `search_places(query: str, type: "attraction"|"restaurant"|"hotel"|"any" = "any", location_bias: str | None = None, max_results: int = 10)`
+**When** the tool is invoked with a query and a type
+**Then** it calls Google Places Text Search (New) with a tight FieldMask
+**And** `type` is mapped to `includedType`: attraction→`tourist_attraction`, restaurant→`restaurant`, hotel→`lodging`, any→no includedType
+**And** `location_bias` (when provided) is passed through to the request
+**And** the response is a list of up to `max_results` items with `{place_id, name, address, latitude, longitude, rating, user_rating_count, primary_type, price_level}`
+**And** `latitude` / `longitude` are top-level, decimal degrees WGS84, 6 decimal places
+
+**Given** `get_place_details(place_id: str)`
+**When** the tool is invoked
+**Then** it calls Google Place Details (New) with the exact FieldMask: `id, displayName, formattedAddress, location, rating, userRatingCount, regularOpeningHours, currentOpeningHours, websiteUri, internationalPhoneNumber, priceLevel, priceRange, businessStatus, editorialSummary, primaryType, types, reviews, googleMapsUri, dineIn, takeout, delivery, reservable, servesBreakfast, servesLunch, servesDinner, outdoorSeating, goodForChildren, allowsDogs`
+**And** `location.latitude` / `location.longitude` are flattened to top-level `latitude` / `longitude`
+**And** the nested `location` object is not returned
+**And** missing optional fields (e.g., rating, hours, editorialSummary) are returned as `null`
+
+**Given** each tool's docstring
+**When** it is displayed to the caller
+**Then** it documents the Google Places SKU tier consumed (Text Search, Advanced Place Details)
+
+**Given** a Google API auth error (e.g., 401/403)
+**When** surfaced to the tool boundary
+**Then** the response is `{error: "Google Places authentication failed", code: "AUTH"}`
+
+**Given** a Google quota/rate-limit error (e.g., 429, RESOURCE_EXHAUSTED)
+**When** surfaced to the tool boundary
+**Then** the response is `{error: "Google Places quota exceeded", code: "QUOTA"}`
+
+**Given** a Place Details call for a non-existent place_id (404)
+**When** surfaced to the tool boundary
+**Then** the response is `{error: "Place not found", code: "NOT_FOUND"}`
+
+**Given** `tests/servers/places/test_search.py` and `tests/servers/places/test_details.py`
+**When** I run them
+**Then** all tests pass with `httpx.AsyncClient` mocked at the request boundary
+**And** tests assert FieldMask is set on every outbound call
+**And** tests assert coordinate flattening and 6-decimal formatting
+
+### Story 7.3: Scoring, Reviews & Batch Tools
+
+As an agent,
+I want to score places with Bayesian weighting, read reviews as-is, and batch-score multiple queries concurrently,
+So that I can rank travel options without overloading the caller with raw Google responses.
+
+**Acceptance Criteria:**
+
+**Given** `score_place(place_id: str, category: "attraction"|"restaurant"|"hotel" | None = None)`
+**When** the tool is invoked with a valid place_id and no category
+**Then** it fetches details via `get_place_details`
+**And** infers category from `primaryType`: values in `{tourist_attraction, museum, park, landmark, ...}` → attraction; `restaurant, cafe, bar, bakery, ...` → restaurant; `lodging, hotel` → hotel
+**And** if inference is ambiguous, defaults to `restaurant`
+
+**Given** rating R, user_rating_count v, category mean C, confidence threshold m
+**When** the Bayesian score is computed
+**Then** it uses the formula `score = (v / (v + m)) * R + (m / (v + m)) * C`
+**And** constants are: attractions C=4.3 / m=500, restaurants C=4.1 / m=100, hotels C=4.0 / m=200
+**And** the result is returned with 2 decimal places
+
+**Given** a place with no rating or review count
+**When** `score_place` is called
+**Then** `bayesian_score` is still returned (shrinks hard toward C)
+**And** `rating` and `review_count` are surfaced as `null` where absent
+
+**Given** the `score_place` response shape
+**When** returned
+**Then** it contains exactly: `place_id, name, latitude, longitude, category, rating, review_count, bayesian_score, price_level, is_open_now, business_status, primary_type, types, editorial_summary, has_editorial, google_maps_uri`
+**And** no tiering, no "value/overpriced" judgments, no recommendation flags are included
+**And** `has_editorial` is `true` iff `editorial_summary` is non-null
+
+**Given** `summarize_reviews(place_id: str)`
+**When** the tool is invoked
+**Then** it fetches Place Details and extracts the `reviews` field
+**And** returns up to 5 reviews as `[{author, rating, text, relative_time}]`
+**And** no LLM summarization occurs at this layer
+
+**Given** `batch_score(queries: list[str], type: str = "any")`
+**When** the tool is invoked with N queries
+**Then** it runs `search_places` for each query, takes the top result, then `score_place` on that place_id
+**And** execution is concurrent via `httpx.AsyncClient` with `asyncio.Semaphore(10)`
+**And** the response is `[{query, name, latitude, longitude, score_result}]`
+**And** queries returning no results surface with `score_result: null` and a clear indicator, not an exception
+
+**Given** `tests/servers/places/test_smoke.py`
+**When** I run it with a live `GOOGLE_PLACES_API_KEY` in `.env`
+**Then** all 5 tools (`search_places`, `get_place_details`, `score_place`, `summarize_reviews`, `batch_score`) execute end-to-end
+**And** smoke-test targets are: attraction → "Vianden Castle", restaurant → "Chiggeri Luxembourg", hotel → "Le Place d'Armes Luxembourg"
+**And** each target returns a non-null Bayesian score and flattened coordinates
+
+**Given** `tests/servers/places/test_scoring.py`
+**When** I run it
+**Then** all Bayesian tests pass: famous landmark (high R, large v) scores close to R; new restaurant (high R, v<5) shrinks toward C=4.1; missing rating shrinks fully to C

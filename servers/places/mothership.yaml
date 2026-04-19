@@ -1,0 +1,6 @@
+name: places
+description: "Travel research via Google Places API (New) — attractions, restaurants, hotels"
+entry_point: servers.places.server
+port: 8102
+env_vars:
+  - GOOGLE_PLACES_API_KEY

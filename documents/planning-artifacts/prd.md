@@ -221,6 +221,7 @@ env_vars:                              # Environment variables needed (names onl
 - Dashboard metrics: uptime, request count, error count, last request time
 - Per-MCP dedicated log files with dashboard log viewer
 - Imagen MCP migrated from stdio to network transport as first managed server
+- Places MCP server (Google Places API New) — second managed server, validates drop-in capability pattern
 - Single CLI command to start the entire system
 - MCP protocol compliance including `tools/list` discovery
 - Project renamed to MCP Mothership (repo, pyproject.toml, references)
@@ -312,6 +313,20 @@ env_vars:                              # Environment variables needed (names onl
 
 - FR32: Project is renamed from Engagement Manager to MCP Mothership across repository, pyproject.toml, and code references
 - FR33: Existing shared modules (config, errors, logging) are retained and available for MCP servers
+
+### Places MCP Capability
+
+The Places MCP server wraps the Google Places API (New) to provide travel-research capabilities (tourist attractions, restaurants, hotels) to any agent connected to the Mothership. It is the second managed MCP server and the first true "drop-in" capability — added by dropping a `mothership.yaml` into `servers/places/` with no changes to the manager. No caching for MVP; every call hits the Places API.
+
+- PFR34: `search_places` tool returns up to N places filtered by type (attraction / restaurant / hotel / any); maps `type` → Google `includedType` (tourist_attraction, restaurant, lodging); returns place_id, name, address, latitude, longitude, rating, user_rating_count, primary_type, price_level
+- PFR35: `get_place_details` tool returns detailed place information using the specified FieldMask (id, displayName, formattedAddress, location, rating, userRatingCount, regularOpeningHours, currentOpeningHours, websiteUri, internationalPhoneNumber, priceLevel, priceRange, businessStatus, editorialSummary, primaryType, types, reviews, googleMapsUri, dineIn, takeout, delivery, reservable, servesBreakfast, servesLunch, servesDinner, outdoorSeating, goodForChildren, allowsDogs) with top-level flattened `latitude` / `longitude`
+- PFR36: `score_place` tool returns raw scoring signals — place_id, name, latitude, longitude, category, rating, review_count, bayesian_score, price_level, is_open_now, business_status, primary_type, types, editorial_summary, has_editorial, google_maps_uri. No tiering, no value judgments. Category inferred from `primaryType` when not specified.
+- PFR37: Bayesian scoring formula `score = (v / (v + m)) * R + (m / (v + m)) * C` where R = rating, v = user_rating_count, C = category mean, m = confidence threshold. Constants: attractions C=4.3 / m=500, restaurants C=4.1 / m=100, hotels C=4.0 / m=200. Missing rating / review count handled gracefully (score shrinks toward C).
+- PFR38: `summarize_reviews` tool returns up to 5 Google reviews as-is in the shape `[{author, rating, text, relative_time}]` — no LLM summarization at this layer.
+- PFR39: `batch_score` tool accepts a list of queries plus optional type; for each query it runs search → top result → score; executes concurrently via `httpx.AsyncClient` with semaphore=10; returns `[{query, name, latitude, longitude, score_result}]`.
+- PFR40: All coordinates are decimal-degree WGS84 at 6 decimal places; always surfaced as top-level `latitude` / `longitude`, never a nested `location` object.
+- PFR41: Places server validates `GOOGLE_PLACES_API_KEY` on startup via pydantic-settings and fails fast with a clear error naming the missing variable if absent.
+- PFR42: Every Places API call includes a tight FieldMask for cost discipline. Each tool's docstring documents which Places SKU tier it consumes. API errors map at the MCP tool boundary to structured responses: `{error: "...", code: "NOT_FOUND" | "QUOTA" | "AUTH" | "UNKNOWN"}`, with credential values never appearing in error messages or logs.
 
 ## Non-Functional Requirements
 
