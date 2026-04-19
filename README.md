@@ -80,7 +80,7 @@ curl -X POST http://localhost:8080/api/servers/imagen/start
 
 ### Step 2: Configure your Claude Code project
 
-In your project directory, add the Mothership's Imagen server to `.mcp.json`:
+In your project directory, add the Mothership's servers to `.mcp.json`. Include every server you want this project to use:
 
 ```json
 {
@@ -88,12 +88,23 @@ In your project directory, add the Mothership's Imagen server to `.mcp.json`:
     "imagen": {
       "type": "streamable-http",
       "url": "http://localhost:8101/mcp"
+    },
+    "places": {
+      "type": "streamable-http",
+      "url": "http://localhost:8102/mcp"
     }
   }
 }
 ```
 
-That's it. Claude Code will connect to the running Imagen server over HTTP. No need to install dependencies, configure credentials, or run anything in your project.
+Each entry points at a Mothership-managed server by port:
+
+| Server | Port | URL |
+|---|---|---|
+| `imagen` | 8101 | `http://localhost:8101/mcp` |
+| `places` | 8102 | `http://localhost:8102/mcp` |
+
+Drop any entry you don't need. Claude Code will connect to whatever is running in the Mothership over HTTP — no need to install dependencies, configure credentials, or run anything in your project.
 
 ### Step 3: Use it
 
