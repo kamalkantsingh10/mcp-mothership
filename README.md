@@ -191,7 +191,7 @@ Config priority: env vars > `.env` file > `config.yaml` > defaults
 
 1. Open the [Google Cloud Console](https://console.cloud.google.com/) and select (or create) a project.
 2. Enable billing on the project — Places API calls require a billing account even within the free tier.
-3. Enable the **Places API (New)**:
+3. Enable the **Places API (New)** — note the console lists two entries, legacy "Places API" and "Places API (New)". This server uses the **New** one only; enabling the legacy API is not required.
    ```bash
    gcloud services enable places.googleapis.com --project=YOUR_PROJECT_ID
    ```
