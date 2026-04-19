@@ -181,6 +181,28 @@ Set via environment variables or `.env`:
 
 Config priority: env vars > `.env` file > `config.yaml` > defaults
 
+### Places Settings
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GOOGLE_PLACES_API_KEY` | Yes | — | Google Places API (New) key |
+
+### Google Places API Key
+
+1. Open the [Google Cloud Console](https://console.cloud.google.com/) and select (or create) a project.
+2. Enable billing on the project — Places API calls require a billing account even within the free tier.
+3. Enable the **Places API (New)**:
+   ```bash
+   gcloud services enable places.googleapis.com --project=YOUR_PROJECT_ID
+   ```
+   Or via the console: **APIs & Services → Library → "Places API (New)" → Enable**.
+4. Create an API key: **APIs & Services → Credentials → Create Credentials → API key**.
+5. Restrict the key (recommended): **Edit API key → API restrictions → Restrict key → select "Places API (New)"**.
+6. Set it in `.env`:
+   ```
+   GOOGLE_PLACES_API_KEY=your-places-api-key
+   ```
+
 ### Vertex AI Configuration
 
 1. Enable the Vertex AI API:
